@@ -1,9 +1,9 @@
 # retoMultiagentes
 
 # Integrantes del equipo:
-Samantha Covarrubias
+Samantha Covarrubias - A01026174
 
-Valeria Martínez
+Valeria Martínez - A01782413
 
 # Descripción del proyecto:
 
