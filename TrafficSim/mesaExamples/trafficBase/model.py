@@ -28,12 +28,7 @@ class CityModel(Model):
             self.grid = MultiGrid(self.width, self.height, torus=False)
             self.schedule = RandomActivation(self)
 
-            corners = [
-                (0, 0),
-                (0, self.height - 1),
-                (self.width - 1, 0),
-                (self.width - 1, self.height - 1),
-            ]
+            corners = [(0, 0), (0, self.height - 1),(self.width - 1, 0),(self.width - 1, self.height - 1),]
 
             for i, pos in enumerate(corners):
                 Agent = Car(i + 1000, self)
@@ -48,8 +43,7 @@ class CityModel(Model):
                         self.grid.place_agent(agent, (c, self.height - r - 1))
 
                     elif col in ["S", "s"]:
-                        agent = Traffic_Light(
-                            f"tl_{r*self.width+c}",
+                        agent = Traffic_Light(f"tl_{r*self.width+c}",
                             self,
                             False if col == "S" else True,
                             int(dataDictionary[col]),
@@ -76,12 +70,7 @@ class CityModel(Model):
 
         # Create a new Car agent at each corner every 10 steps
         if self.schedule.steps % 10 == 0:
-            corners = [
-                (0, 0),
-                (0, self.height - 1),
-                (self.width - 1, 0),
-                (self.width - 1, self.height - 1),
-            ]
+            corners = [(0, 0), (0, self.height - 1), (self.width - 1, 0), (self.width - 1, self.height - 1),]
             for corner in corners:
                 new_agent = Car(self.num_agents + 1, self)
                 self.num_agents += 1
