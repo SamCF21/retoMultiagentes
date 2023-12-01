@@ -13,7 +13,7 @@ def heuristic(a, b):
     #
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-def a_star_search(graph, start, goal, free_way):
+def a_star_search(graph, start, goal, path_clear):
     """
     A* search algorithm.
     Args:
@@ -24,21 +24,22 @@ def a_star_search(graph, start, goal, free_way):
     Returns:
         The path to be followed
     """
-
+    print(f"Starting A* search from {start} to {goal}")
     frontier = []
     heapq.heappush(frontier, (0, start))
     came_from = {start: None}
     cost_so_far = {start: 0}
     
     while frontier:
-        #take the current node with the minimum cost
+
         current = heapq.heappop(frontier)[1]
+        print(f"Checking cell: {current}")
 
         if current == goal:
             break
         
         for next in graph.get_neighborhood(current, moore=False, include_center=False):
-            if not free_way(current, next):
+            if not path_clear(current, next):
                 continue
 
             new_cost = cost_so_far[current] + 1
@@ -57,8 +58,10 @@ def a_star_search(graph, start, goal, free_way):
             path[previous] = current
             current = previous
         else:
+            print("No path found")
             return {}
         
+    print(f"Path found: {path}")
     return path
 
 class Car(Agent):
@@ -99,43 +102,38 @@ class Car(Agent):
         elif road_direction == "Down": 
             return dy != 1 
         return False 
-    #function to find the path from the start to the end
+
     def find_path(self):
         if self.end:
-            def free_way(current,next):
+            def path_clear(current,next):
                 content = self.model.grid.get_cell_list_contents([next])
                 if any(isinstance(agent, Obstacle) for agent in content):
                     return False
-                
-
-                #see if there is a road in the next cell
                 if any(isinstance(agent, (Road, Traffic_Light, Destination)) for agent in content):
-                    #check if the agent is a road
                     road_agent= [agent for agent in content if isinstance(agent, Road)]
                     if road_agent:
                         road_agent = road_agent[0]
-                        #check if the road is in the right direction
                         return self.check_path(current, next, road_agent.direction)
                     return True
                 return False
-            return a_star_search(self.model.grid, self.start, self.end, free_way)
+            return a_star_search(self.model.grid, self.start, self.end, path_clear)
         return None
 
-    def object_orientation(self, current, next):
+    def check_direction(self, current, next):
         """
-       To see the direction the agent should face after moving.
+        Determines the direction the agent should face after moving.
         """
         dx = next[0] - current[0] # Change in x
         dy = next[1] - current[1] # Change in y
         if dx == 1: # If the agent moved right,
             return "Right"
-        elif dx == -1: 
+        elif dx == -1: # If the agent moved left,
             return "Left"
-        elif dy == -1: 
+        elif dy == -1: # If the agent moved up,
             return "Up"
-        elif dy == 1: 
+        elif dy == 1: # If the agent moved down,
             return "Down"
-        else: 
+        else: # If the agent didn't move,
             return None
 
     def move(self):
@@ -157,27 +155,25 @@ class Car(Agent):
                         else:
                             next_pos = self.path.get(self.pos) # Get the next position
                 
-                if next_pos is not None: 
-                    # Move the agent to the next position
-                    self.model.grid.move_agent(self, next_pos) 
-                    # Change the direction of the agent
-                    self.direction = self.object_orientation(self.pos, next_pos) 
-                    if next_pos == self.end: 
+                if next_pos is not None: # If the next position is not None,
+                    self.model.grid.move_agent(self, next_pos) # Move the agent to the next position
+                    self.direction = self.check_direction(self.pos, next_pos) # Get the direction the agent should face
+                    if next_pos == self.end: # If the destination is reached,
                         print(f"Car {self.unique_id} reached destination {self.end}") 
                         self.model.num_cars_arrived += 1 # Increment the number of cars that reached their destination
-                        self.model.remove_car(self)
-                else: 
+                        self.model.remove_car(self) # Remove the car from the model
+                else: # If the next position is None,
                     print("No valid next position found.")
 
                 """ if road_agent:
                 # Move the car based on the direction of the road agent
-                if road_agent.direction == "Left":
+                if road_agent.direction == "<":
                     self.model.grid.move_agent(self, (x - 1, y))
-                elif road_agent.direction == "Right":
+                elif road_agent.direction == ">":
                     self.model.grid.move_agent(self, (x + 1, y))
-                elif road_agent.direction == "Up":
+                elif road_agent.direction == "^":
                     self.model.grid.move_agent(self, (x, y + 1))
-                elif road_agent.direction == "Down":
+                elif road_agent.direction == "v":
                     self.model.grid.move_agent(self, (x, y - 1)) """
 
     def step(self):
@@ -241,3 +237,4 @@ class Road(Agent):
         """
         super().__init__(unique_id, model)
         self.direction = direction
+

@@ -18,12 +18,12 @@ class CityModel(Model):
 
     def __init__(self, N):
         # Load the map dictionary. The dictionary maps the characters in the map file to the corresponding agent.
-        dataDictionary = json.load(open("C:/Users/samyc/Documents/repos/TC2008B/retoGr-ficas-pruebas-/TrafficSim/mesaExamples/trafficBase/city_files/mapDictionary.json"))
+        dataDictionary = json.load(open("/Users/VMM/Desktop/repos/retoGr-ficas-pruebas-/TrafficSim/mesaExamples/trafficBase/city_files/mapDictionary.json"))
 
         self.traffic_lights = []
 
         # Load the map file. The map file is a text file where each character represents an agent.
-        with open("C:/Users/samyc/Documents/repos/TC2008B/retoGr-ficas-pruebas-/TrafficSim/mesaExamples/trafficBase/city_files/2023_base.txt") as baseFile:
+        with open("/Users/VMM/Desktop/repos/retoGr-ficas-pruebas-/TrafficSim/mesaExamples/trafficBase/city_files/2023_base.txt") as baseFile:
             lines = baseFile.readlines()
             self.width = len(lines[0]) - 1
             self.height = len(lines)
@@ -62,17 +62,14 @@ class CityModel(Model):
         self.steps=0
         self.num_cars_arrived = 0
     
-    def goal(self):
-        end= []
-
+    def set_destination(self):
+        destinations= []
         for agent in self.schedule.agents:
-            #in case there are more than one destination
             if isinstance(agent, Destination):
-                #adds the position of the destination to the list
-                end.append(agent.pos)
-        return self.random.choice(end)
+                destinations.append(agent.pos)
+        return self.random.choice(destinations)
     
-    def erase_agent(self, car):
+    def remove_car(self, car):
         """
         Removes the car from the model.
 
@@ -109,14 +106,13 @@ class CityModel(Model):
             print("Request " + "successful" if response.status_code == 200 else "failed", "Status code:", response.status_code)
             print("Responses:", response.json())
 
-        # Create a new Car agent at each side every 10 steps
+        # Create a new Car agent at each corner every 10 steps
         if self.schedule.steps % 10 == 0 or self.schedule.steps == 1:
-            sides = [(0, 0), (0, self.height - 1), (self.width - 1, 0), (self.width - 1, self.height - 1),]
-            for side in sides:
-                # Create a new car agent
-                new_agent = Car(self.num_agents + 1, self, side, self.goal())
+            corners = [(0, 0), (0, self.height - 1), (self.width - 1, 0), (self.width - 1, self.height - 1),]
+            for corner in corners:
+                new_agent = Car(self.num_agents + 1, self, corner, self.set_destination())
                 new_agent.get_path()
                 
-                self.grid.place_agent(new_agent, side)
+                self.grid.place_agent(new_agent, corner)
                 self.schedule.add(new_agent)
                 self.num_agents += 1
