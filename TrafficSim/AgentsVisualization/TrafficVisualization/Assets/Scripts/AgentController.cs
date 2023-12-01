@@ -44,7 +44,7 @@ public class AgentsData
         positions (list): A list of AgentData objects.
     */
     public List<AgentData> positions;
-
+  
     public AgentsData() => this.positions = new List<AgentData>();
 }
 
@@ -79,15 +79,21 @@ public class AgentController : MonoBehaviour
     string serverUrl = "http://localhost:8585";
     string getAgentsEndpoint = "/getAgents";
     string getObstaclesEndpoint = "/getObstacles";
+
+    string getTrafficLightsEndpoint = "/getTrafficLights";
+
+    string getRoadEndpoint = "/getRoads";
+
+    string getDestinationsEndpoint = "/getDestinations";
     string sendConfigEndpoint = "/init";
     string updateEndpoint = "/update";
-    AgentsData agentsData, obstacleData;
+    AgentsData agentsData, obstacleData, trafficLightsData, roadData, destinationsData;
     Dictionary<string, GameObject> agents;
     Dictionary<string, Vector3> prevPositions, currPositions;
 
     bool updated = false, started = false;
 
-    public GameObject agentPrefab, obstaclePrefab, floor;
+    public GameObject agentPrefab, obstaclePrefab, trafficLightPrefab, roadPrefab, destinationPrefab;
     public int NAgents, width, height;
     public float timeToUpdate = 5.0f;
     private float timer, dt;
@@ -96,14 +102,14 @@ public class AgentController : MonoBehaviour
     {
         agentsData = new AgentsData();
         obstacleData = new AgentsData();
+        trafficLightsData = new AgentsData();
+        roadData = new AgentsData();
+        destinationsData = new AgentsData();
 
         prevPositions = new Dictionary<string, Vector3>();
         currPositions = new Dictionary<string, Vector3>();
 
         agents = new Dictionary<string, GameObject>();
-
-        floor.transform.localScale = new Vector3((float)width/10, 1, (float)height/10);
-        floor.transform.localPosition = new Vector3((float)width/2-0.5f, 0, (float)height/2-0.5f);
         
         timer = timeToUpdate;
 
@@ -131,12 +137,11 @@ public class AgentController : MonoBehaviour
             {
                 Vector3 currentPosition = agent.Value;
                 Vector3 previousPosition = prevPositions[agent.Key];
+                if (agents.ContainsKey(agent.Key)){
 
-                Vector3 interpolated = Vector3.Lerp(previousPosition, currentPosition, dt);
-                Vector3 direction = currentPosition - interpolated;
-
-                agents[agent.Key].transform.localPosition = interpolated;
-                if(direction != Vector3.zero) agents[agent.Key].transform.rotation = Quaternion.LookRotation(direction);
+                    agents[agent.Key].GetComponent<car>().SetMovement(previousPosition, currentPosition, dt);
+                }
+               
             }
 
             // float t = (timer / timeToUpdate);
@@ -187,6 +192,10 @@ public class AgentController : MonoBehaviour
             // Once the configuration has been sent, it launches a coroutine to get the agents data.
             StartCoroutine(GetAgentsData());
             StartCoroutine(GetObstacleData());
+            StartCoroutine(GetTrafficLightsData());
+            StartCoroutine(GetRoadData());
+            StartCoroutine(GetDestinationsData());
+
         }
     }
 
@@ -209,22 +218,45 @@ public class AgentController : MonoBehaviour
             {
                 Vector3 newAgentPosition = new Vector3(agent.x, agent.y, agent.z);
 
-                    if(!started)
-                    {
-                        prevPositions[agent.id] = newAgentPosition;
-                        agents[agent.id] = Instantiate(agentPrefab, newAgentPosition, Quaternion.identity);
-                    }
-                    else
+                    if(agents.ContainsKey(agent.id))
                     {
                         Vector3 currentPosition = new Vector3();
                         if(currPositions.TryGetValue(agent.id, out currentPosition))
                             prevPositions[agent.id] = currentPosition;
                         currPositions[agent.id] = newAgentPosition;
                     }
+                    else
+                    {
+                        prevPositions[agent.id] = newAgentPosition;
+                        agents[agent.id] = Instantiate(agentPrefab, new Vector3 (0,0,0), Quaternion.identity);
+                    }
+
+                    List<string> keysToRemove = new List<string>();
+                foreach(var agentId in new List<string>(agents.Keys))
+                {
+                    if(!agentsData.positions.Exists(x => x.id == agentId))
+                    {
+                        keysToRemove.Add(agentId);
+                    }
+                }
+
+                foreach (string key in keysToRemove)
+                {
+                    if (agents.TryGetValue(key, out GameObject carAgent))
+                    {
+                        car carObject = carAgent.GetComponent<car>();
+                        if (carObject != null)
+                        {
+                            carObject.DeleteCar();
+                            agents.Remove(key);
+                        }
+                    }
+                }
             }
 
             updated = true;
             if(!started) started = true;
+
         }
     }
 
@@ -244,6 +276,67 @@ public class AgentController : MonoBehaviour
             foreach(AgentData obstacle in obstacleData.positions)
             {
                 Instantiate(obstaclePrefab, new Vector3(obstacle.x, obstacle.y, obstacle.z), Quaternion.identity);
+            }
+        }
+    }
+
+    IEnumerator GetTrafficLightsData() 
+    {
+        UnityWebRequest www = UnityWebRequest.Get(serverUrl + getTrafficLightsEndpoint);
+        yield return www.SendWebRequest();
+ 
+        if (www.result != UnityWebRequest.Result.Success)
+            Debug.Log(www.error);
+        else 
+        {
+            trafficLightsData = JsonUtility.FromJson<AgentsData>(www.downloadHandler.text);
+
+            Debug.Log(trafficLightsData.positions);
+
+            foreach(AgentData trafficLight in trafficLightsData.positions)
+            {
+                Instantiate(trafficLightPrefab, new Vector3(trafficLight.x, trafficLight.y, trafficLight.z), Quaternion.identity);
+                Instantiate(roadPrefab, new Vector3(trafficLight.x, trafficLight.y, trafficLight.z), Quaternion.identity);
+            }
+        }
+    }
+
+    IEnumerator GetRoadData() 
+    {
+        UnityWebRequest www = UnityWebRequest.Get(serverUrl + getRoadEndpoint);
+        yield return www.SendWebRequest();
+ 
+        if (www.result != UnityWebRequest.Result.Success)
+            Debug.Log(www.error);
+        else 
+        {
+            roadData = JsonUtility.FromJson<AgentsData>(www.downloadHandler.text);
+
+            Debug.Log(roadData.positions);
+
+            foreach(AgentData road in roadData.positions)
+            {
+                Instantiate(roadPrefab, new Vector3(road.x, road.y, road.z), Quaternion.identity);
+            }
+        }
+    }
+
+    IEnumerator GetDestinationsData() 
+    {
+        UnityWebRequest www = UnityWebRequest.Get(serverUrl + getDestinationsEndpoint);
+        yield return www.SendWebRequest();
+ 
+        if (www.result != UnityWebRequest.Result.Success)
+            Debug.Log(www.error);
+        else 
+        {
+            destinationsData = JsonUtility.FromJson<AgentsData>(www.downloadHandler.text);
+
+            Debug.Log(destinationsData.positions);
+
+            foreach(AgentData destination in destinationsData.positions)
+            {
+                Instantiate(destinationPrefab, new Vector3(destination.x, destination.y, destination.z), Quaternion.identity);
             }
         }
     }
