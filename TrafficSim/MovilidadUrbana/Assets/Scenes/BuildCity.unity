@@ -379,7 +379,7 @@ MonoBehaviour:
   NAgents: 0
   width: 0
   height: 0
-  timeToUpdate: 3
+  timeToUpdate: 0.1
 --- !u!850595691 &1515965292
 LightingSettings:
   m_ObjectHideFlags: 0
